@@ -1,0 +1,18 @@
+{
+  "extends": "@polagent/config/tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "outDir": "dist",
+    "rootDir": "../..",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@polagent/agents": ["../../packages/agents/src/index.ts"],
+      "@polagent/agents/*": ["../../packages/agents/src/*.ts"]
+    },
+    "jsx": "react-jsx",
+    "strictNullChecks": true
+  },
+  "include": ["src/**/*", "../../packages/agents/src/**/*"],
+  "exclude": ["dist", "node_modules", "../../packages/agents/src/**/*.test.ts"]
+}

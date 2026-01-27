@@ -1,0 +1,23 @@
+{
+  "name": "@polagent/auth",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "dependencies": {
+    "@polagent/db": "workspace:*",
+    "@polagent/env": "workspace:*",
+    "better-auth": "catalog:",
+    "dotenv": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@polagent/config": "workspace:*",
+    "typescript": "catalog:"
+  }
+}

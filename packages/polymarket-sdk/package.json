@@ -1,0 +1,21 @@
+{
+  "name": "@polagent/polymarket-sdk",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./client": "./src/client.ts",
+    "./types": "./src/types.ts"
+  },
+  "dependencies": {
+    "@polagent/env": "workspace:*",
+    "ethers": "^6.13.0",
+    "zod": "catalog:",
+    "winston": "catalog:"
+  },
+  "devDependencies": {
+    "@polagent/config": "workspace:*",
+    "@types/bun": "catalog:",
+    "typescript": "catalog:"
+  }
+}

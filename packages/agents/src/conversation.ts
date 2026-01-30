@@ -4,7 +4,9 @@ export function dedupeUIMessagesById(messages: UIMessage[]): UIMessage[] {
   const seen = new Set<string>();
   const out: UIMessage[] = [];
   for (const m of messages) {
-    if (seen.has(m.id)) continue;
+    if (seen.has(m.id)) {
+      continue;
+    }
     seen.add(m.id);
     out.push(m);
   }
@@ -15,8 +17,12 @@ export function trimUIMessages(
   messages: UIMessage[],
   maxMessages: number
 ): UIMessage[] {
-  if (maxMessages <= 0) return [];
-  if (messages.length <= maxMessages) return messages;
+  if (maxMessages <= 0) {
+    return [];
+  }
+  if (messages.length <= maxMessages) {
+    return messages;
+  }
   return messages.slice(messages.length - maxMessages);
 }
 

@@ -24,7 +24,10 @@ export function isApiError(response: unknown): response is { error: string } {
  */
 export function isApiMarketsResponse(
   response: unknown
-): response is ApiMarketsResponse {
+): response is ApiMarketsResponse | ApiMarket[] {
+  if (Array.isArray(response)) {
+    return true;
+  }
   return (
     typeof response === "object" &&
     response !== null &&

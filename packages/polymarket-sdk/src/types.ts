@@ -77,6 +77,7 @@ export interface PolymarketApiConfig {
   apiKey: string;
   apiSecret: string;
   baseUrl: string;
+  gammaUrl?: string;
   chainId: number;
   rpcUrl: string;
 }

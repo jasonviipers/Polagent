@@ -6,7 +6,11 @@ import { OpenAPIReferencePlugin } from "@orpc/openapi/plugins";
 import { onError } from "@orpc/server";
 import { RPCHandler } from "@orpc/server/fetch";
 import { ZodToJsonSchemaConverter } from "@orpc/zod/zod4";
-import { AgentOrchestrator, InMemoryAgentMemoryStore, PolymarketMarketDataSource } from "@polagent/agents";
+import {
+  AgentOrchestrator,
+  InMemoryAgentMemoryStore,
+  PolymarketMarketDataSource,
+} from "@polagent/agents";
 import { createContext } from "@polagent/api/context";
 import { appRouter } from "@polagent/api/routers/index";
 import { auth } from "@polagent/auth";
@@ -38,6 +42,7 @@ const polymarketClient = new PolymarketClient(
     apiKey: env.POLYMARKET_API_KEY || "",
     apiSecret: env.POLYMARKET_API_SECRET || "",
     baseUrl: env.POLYMARKET_BASE_URL,
+    gammaUrl: env.POLYMARKET_GAMMA_API_URL,
     chainId: env.POLYMARKET_CHAIN_ID,
     rpcUrl: env.POLYMARKET_RPC_URL,
   },

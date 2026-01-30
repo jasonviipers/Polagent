@@ -41,7 +41,7 @@ export class InMemoryModelMetricsStore implements ModelMetricsStore {
     return `${modelId}::${taskType}`;
   }
 
-  async record(metrics: ModelCallMetrics): Promise<void> {
+  record(metrics: ModelCallMetrics): Promise<void> {
     const key = this.key(metrics.modelId, metrics.taskType);
     const existing = this.stats.get(key);
     const next: ModelRollingStats = existing
@@ -70,18 +70,19 @@ export class InMemoryModelMetricsStore implements ModelMetricsStore {
     }
 
     this.stats.set(key, next);
+    return Promise.resolve();
   }
 
-  async get(
-    modelId: ModelId,
-    taskType: TaskType
-  ): Promise<ModelRollingStats | null> {
-    return this.stats.get(this.key(modelId, taskType)) ?? null;
+  get(modelId: ModelId, taskType: TaskType): Promise<ModelRollingStats | null> {
+    return Promise.resolve(this.stats.get(this.key(modelId, taskType)) ?? null);
   }
 
-  async list(): Promise<ModelRollingStats[]> {
-    return [...this.stats.values()].sort(
-      (a, b) => (b.lastCallAt?.getTime() ?? 0) - (a.lastCallAt?.getTime() ?? 0)
+  list(): Promise<ModelRollingStats[]> {
+    return Promise.resolve(
+      [...this.stats.values()].sort(
+        (a, b) =>
+          (b.lastCallAt?.getTime() ?? 0) - (a.lastCallAt?.getTime() ?? 0)
+      )
     );
   }
 }

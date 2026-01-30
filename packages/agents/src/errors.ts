@@ -13,13 +13,14 @@ export class AgentConfigError extends AgentError {
 }
 
 export class AgentToolError extends AgentError {
-  constructor(
-    message: string,
-    readonly toolName: string,
-    readonly cause?: unknown
-  ) {
+  readonly toolName: string;
+  readonly cause?: unknown;
+
+  constructor(message: string, toolName: string, cause?: unknown) {
     super(message);
     this.name = "AgentToolError";
+    this.toolName = toolName;
+    this.cause = cause;
   }
 }
 

@@ -91,8 +91,8 @@ export interface ExecutionResult {
   reason?: string;
 }
 
-export type AgentChatRequest = {
+export interface AgentChatRequest {
   threadId: string;
   agentId: string;
   messages: UIMessage[];
-};
+}

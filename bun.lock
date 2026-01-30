@@ -36,6 +36,7 @@
         "@polagent/db": "workspace:*",
         "@polagent/env": "workspace:*",
         "@polagent/models": "workspace:*",
+        "@polagent/polymarket-sdk": "workspace:*",
         "ai": "catalog:",
         "better-auth": "catalog:",
         "dotenv": "catalog:",

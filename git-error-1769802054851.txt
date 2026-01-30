@@ -1,0 +1,69 @@
+> git -c user.useConfigOnly=true commit --quiet --allow-empty-message --file -
+bun test v1.3.6 (d530ed99)
+
+packages\agents\src\test\agent-system.test.ts:
+(pass) agent flow can call tools and produce a final response [31.00ms]
+
+packages\agents\src\test\orchestrator-validation.test.ts:
+(pass) orchestrator rejects oversized message arrays
+
+packages\agents\src\test\swarm-execution.test.ts:
+40 |   }
+41 | 
+42 |   getAgent(agentId: string): TradingAgent {
+43 |     const agent = this.agents.get(agentId);
+44 |     if (!agent) {
+45 |       throw new AgentConfigError(`Unknown agentId: ${agentId}`);
+                 ^
+AgentConfigError: Unknown agentId: agent_orchestrator
+      at getAgent (C:\Users\4hkee\OneDrive\Bureau\Jason Platform\polagent\packages\agents\src\orchestrator.ts:45:13)
+      at respond (C:\Users\4hkee\OneDrive\Bureau\Jason Platform\polagent\packages\agents\src\orchestrator.ts:62:24)
+      at respond (C:\Users\4hkee\OneDrive\Bureau\Jason Platform\polagent\packages\agents\src\orchestrator.ts:50:17)
+      at <anonymous> (C:\Users\4hkee\OneDrive\Bureau\Jason Platform\polagent\packages\agents\src\test\swarm-execution.test.ts:101:39)
+      at <anonymous> (C:\Users\4hkee\OneDrive\Bureau\Jason Platform\polagent\packages\agents\src\test\swarm-execution.test.ts:19:67)
+(fail) orchestrator can delegate tasks to sub-agents in parallel [15.00ms]
+
+packages\agents\src\test\trading-tools-hooks.test.ts:
+50 |     side: "buy",
+51 |     size: 10,
+52 |     maxSlippage: 0.02,
+53 |   });
+54 |   expect(first.status).toBe("success");
+55 |   expect(state.tradesToday).toBe(1);
+                                 ^
+error: expect(received).toBe(expected)
+
+Expected: 1
+Received: 0
+
+      at <anonymous> (C:\Users\4hkee\OneDrive\Bureau\Jason Platform\polagent\packages\agents\src\test\trading-tools-hooks.test.ts:55:29)
+(fail) executeTrade hook enforces daily trade limit
+
+packages\models\src\test\model-router.test.ts:
+(pass) router honors manual override
+(pass) router avoids models with high observed error rate
+(pass) router falls back to non-default profiles when no enabled models match
+
+packages\polymarket-sdk\src\test\client.test.ts:
+PolymarketClient: No private key provided, using random wallet (read-only mode for trading)
+{"level":"info","message":"Fetching markets","service":"polymarket-client","status":"active"}
+43 |       },
+44 |       ""
+45 |     );
+46 | 
+47 |     const markets = await client.getMarkets("active");
+48 |     expect(markets).toHaveLength(1);
+                         ^
+error: expect(received).toHaveLength(expected)
+
+Expected length: 1
+Received length: 0
+
+      at <anonymous> (C:\Users\4hkee\OneDrive\Bureau\Jason Platform\polagent\packages\polymarket-sdk\src\test\client.test.ts:48:21)
+(fail) getMarkets maps Gamma markets into PolymarketMarket [78.00ms]
+
+ 5 pass
+ 3 fail
+ 12 expect() calls
+Ran 8 tests across 6 files. [541.00ms]
+husky - pre-commit script failed (code 1)

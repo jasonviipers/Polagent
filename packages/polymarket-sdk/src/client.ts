@@ -1,14 +1,7 @@
-// Use direct imports instead of @polagent/env/server to avoid strict validation
-// when testing with dummy credentials
 import "dotenv/config";
+import { env } from "@polagent/env/server";
 import { ethers } from "ethers";
 import winston from "winston";
-
-// Default values for environment variables
-const DEFAULT_POLYMARKET_USDC_ADDRESS =
-  "0x2791bca1f2de4661ed88a30c99a7a9449aa8417";
-const DEFAULT_NEWS_API_BASE_URL = "https://newsapi.org/v2";
-
 import type {
   ApiMarket,
   ApiMarketsResponse,
@@ -49,12 +42,29 @@ export class PolymarketClient {
   private readonly wallet: ethers.Wallet;
   private readonly logger: winston.Logger;
   private readonly baseUrl: string;
+  private readonly gammaUrl: string;
 
-  constructor(config: PolymarketApiConfig, walletPrivateKey: string) {
+  constructor(config: PolymarketApiConfig, walletPrivateKey?: string) {
     this.config = config;
     this.baseUrl = config.baseUrl;
+    this.gammaUrl = config.gammaUrl || "https://gamma-api.polymarket.com";
     this.provider = new ethers.JsonRpcProvider(config.rpcUrl);
-    this.wallet = new ethers.Wallet(walletPrivateKey, this.provider);
+    if (walletPrivateKey) {
+      try {
+        this.wallet = new ethers.Wallet(walletPrivateKey, this.provider);
+      } catch (error) {
+        console.warn(
+          "PolymarketClient: Invalid private key provided, falling back to random wallet (read-only mode). Error:",
+          error
+        );
+        this.wallet = ethers.Wallet.createRandom(this.provider);
+      }
+    } else {
+      this.wallet = ethers.Wallet.createRandom(this.provider);
+      console.warn(
+        "PolymarketClient: No private key provided, using random wallet (read-only mode for trading)"
+      );
+    }
 
     this.logger = winston.createLogger({
       level: "info",
@@ -95,6 +105,35 @@ export class PolymarketClient {
     }
   }
 
+  private async makeGammaRequest<T>(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<T> {
+    const url = `${this.gammaUrl}${endpoint}`;
+    const headers = {
+      "Content-Type": "application/json",
+      ...options.headers,
+    };
+
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers,
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `Gamma API HTTP ${response.status}: ${response.statusText}`
+        );
+      }
+
+      return (await response.json()) as T;
+    } catch (error) {
+      this.logger.error("Gamma API request failed", { endpoint, error });
+      throw error;
+    }
+  }
+
   async getMarkets(
     status: "active" | "closed" | "all" = "active",
     options: RequestInit = {}
@@ -102,32 +141,35 @@ export class PolymarketClient {
     this.logger.info("Fetching markets", { status });
 
     try {
-      const data = await this.makeRequest<ApiMarketsResponse>(
-        `/markets?status=${status}`,
-        options
-      );
+      const activeParam =
+        status === "all" ? "" : `&active=${status === "active"}`;
+      const data = await this.makeGammaRequest<
+        ApiMarketsResponse | ApiMarket[]
+      >(`/markets?limit=100${activeParam}`, options);
 
       if (!isApiMarketsResponse(data)) {
         throw new Error("Invalid API response format for markets");
       }
 
-      return data.markets.filter(isApiMarket).map((market: ApiMarket) => ({
+      const marketsArray = Array.isArray(data) ? data : data.markets;
+
+      return marketsArray.filter(isApiMarket).map((market: ApiMarket) => ({
         id: market.id,
         question: market.question,
         description: market.description,
         category: market.category,
         endDate: new Date(market.endDate),
-        liquidity: Number.parseFloat(market.liquidity),
-        volume: Number.parseFloat(market.volume),
+        liquidity: Number.parseFloat(market.liquidity || "0"),
+        volume: Number.parseFloat(market.volume || "0"),
         outcomes: market.outcomes.map((outcome) => ({
           id: outcome.id,
           name: outcome.name,
-          price: Number.parseFloat(outcome.price),
-          probability: Number.parseFloat(outcome.probability),
+          price: Number.parseFloat(outcome.price || "0"),
+          probability: Number.parseFloat(outcome.probability || "0"),
         })),
-        bestBid: Number.parseFloat(market.bestBid),
-        bestAsk: Number.parseFloat(market.bestAsk),
-        spread: Number.parseFloat(market.spread),
+        bestBid: Number.parseFloat(market.bestBid || "0"),
+        bestAsk: Number.parseFloat(market.bestAsk || "0"),
+        spread: Number.parseFloat(market.spread || "0"),
         status: market.status,
       }));
     } catch (error) {
@@ -143,7 +185,7 @@ export class PolymarketClient {
     this.logger.info("Fetching market by ID", { marketId });
 
     try {
-      const data = await this.makeRequest<ApiMarket>(
+      const data = await this.makeGammaRequest<ApiMarket>(
         `/markets/${marketId}`,
         options
       );
@@ -158,17 +200,17 @@ export class PolymarketClient {
         description: data.description,
         category: data.category,
         endDate: new Date(data.endDate),
-        liquidity: Number.parseFloat(data.liquidity),
-        volume: Number.parseFloat(data.volume),
+        liquidity: Number.parseFloat(data.liquidity || "0"),
+        volume: Number.parseFloat(data.volume || "0"),
         outcomes: data.outcomes.map((outcome) => ({
           id: outcome.id,
           name: outcome.name,
-          price: Number.parseFloat(outcome.price),
-          probability: Number.parseFloat(outcome.probability),
+          price: Number.parseFloat(outcome.price || "0"),
+          probability: Number.parseFloat(outcome.probability || "0"),
         })),
-        bestBid: Number.parseFloat(data.bestBid),
-        bestAsk: Number.parseFloat(data.bestAsk),
-        spread: Number.parseFloat(data.spread),
+        bestBid: Number.parseFloat(data.bestBid || "0"),
+        bestAsk: Number.parseFloat(data.bestAsk || "0"),
+        spread: Number.parseFloat(data.spread || "0"),
         status: data.status,
       };
     } catch (error) {
@@ -185,7 +227,7 @@ export class PolymarketClient {
 
     try {
       const [marketResponse, orderBook, trades] = await Promise.all([
-        this.makeRequest<ApiMarket>(`/markets/${marketId}`, options),
+        this.makeGammaRequest<ApiMarket>(`/markets/${marketId}`, options),
         this.getOrderBook(marketId, options),
         this.getRecentTrades(marketId, 100, options),
       ]);
@@ -201,17 +243,17 @@ export class PolymarketClient {
           description: marketResponse.description,
           category: marketResponse.category,
           endDate: new Date(marketResponse.endDate),
-          liquidity: Number.parseFloat(marketResponse.liquidity),
-          volume: Number.parseFloat(marketResponse.volume),
+          liquidity: Number.parseFloat(marketResponse.liquidity || "0"),
+          volume: Number.parseFloat(marketResponse.volume || "0"),
           outcomes: marketResponse.outcomes.map((outcome) => ({
             id: outcome.id,
             name: outcome.name,
-            price: Number.parseFloat(outcome.price),
-            probability: Number.parseFloat(outcome.probability),
+            price: Number.parseFloat(outcome.price || "0"),
+            probability: Number.parseFloat(outcome.probability || "0"),
           })),
-          bestBid: Number.parseFloat(marketResponse.bestBid),
-          bestAsk: Number.parseFloat(marketResponse.bestAsk),
-          spread: Number.parseFloat(marketResponse.spread),
+          bestBid: Number.parseFloat(marketResponse.bestBid || "0"),
+          bestAsk: Number.parseFloat(marketResponse.bestAsk || "0"),
+          spread: Number.parseFloat(marketResponse.spread || "0"),
           status: marketResponse.status,
         },
         orderBook,
@@ -435,8 +477,7 @@ export class PolymarketClient {
   }> {
     try {
       const provider = new ethers.JsonRpcProvider(this.config.rpcUrl);
-      const USDC_ADDRESS =
-        process.env.POLYMARKET_USDC_ADDRESS || DEFAULT_POLYMARKET_USDC_ADDRESS;
+      const USDC_ADDRESS = env.POLYMARKET_USDC_ADDRESS;
 
       // ERC20 ABI for balanceOf
       const erc20Abi = [
@@ -534,13 +575,12 @@ export class PolymarketClient {
       }
 
       // Fetch from NewsAPI
-      const newsApiBaseUrl =
-        process.env.NEWS_API_BASE_URL || DEFAULT_NEWS_API_BASE_URL;
+      const newsApiBaseUrl = env.NEWS_API_BASE_URL;
       const newsApiUrl = `${newsApiBaseUrl}/newsapi`;
       const response = await fetch(`${newsApiUrl}?${queryParams.toString()}`, {
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.NEWS_API_KEY || "dummy-key"}`,
+          Authorization: `Bearer ${env.NEWS_API_KEY}`,
         },
         signal,
       });

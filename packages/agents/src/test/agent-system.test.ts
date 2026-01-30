@@ -1,37 +1,40 @@
 import { expect, test } from "bun:test";
 import { generateText, stepCountIs } from "ai";
 import { MockLanguageModelV3 } from "ai/test";
-import { createTradingTools, type MarketDataSource } from "../tools/trading-tools";
+import {
+  createTradingTools,
+  type MarketDataSource,
+} from "../tools/trading-tools";
 
 // Minimal in-test data source to replace the removed shared MockMarketDataSource
 const testDataSource: MarketDataSource = {
-  async getMarketSnapshot(marketId: string) {
+  getMarketSnapshot(marketId: string) {
     if (marketId === "market_demo_bitcoin_100k_feb_2026") {
-      return {
+      return Promise.resolve({
         id: "market_demo_bitcoin_100k_feb_2026",
         question: "Will Bitcoin hit $100k by Feb 2026?",
         category: "Crypto",
-        liquidity: 50000,
-        volume24h: 120000,
+        liquidity: 50_000,
+        volume24h: 120_000,
         outcomes: [
           { id: "outcome_yes", label: "Yes", price: 0.65 },
           { id: "outcome_no", label: "No", price: 0.35 },
         ],
         updatedAt: new Date(),
-      };
+      });
     }
-    return null;
+    return Promise.resolve(null);
   },
-  async listMarketIds() {
-    return ["market_demo_bitcoin_100k_feb_2026"];
+  listMarketIds() {
+    return Promise.resolve(["market_demo_bitcoin_100k_feb_2026"]);
   },
-  async executeTrade(params) {
-    return {
+  executeTrade(params) {
+    return Promise.resolve({
       status: "success",
       txId: "test_tx_id",
       filledPrice: params.price,
-    };
-  }
+    });
+  },
 };
 
 function usage() {

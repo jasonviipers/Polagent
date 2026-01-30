@@ -14,8 +14,17 @@ export const env = createEnv({
     POLYMARKET_USDC_ADDRESS: z.string().min(1),
     POLYMARKET_API_KEY: z.string().min(1).optional(),
     POLYMARKET_API_SECRET: z.string().min(1).optional(),
-    POLYMARKET_WALLET_PRIVATE_KEY: z.string().min(1).optional(),
+    POLYMARKET_WALLET_PRIVATE_KEY: z
+      .string()
+      .regex(
+        /^(0x)?[0-9a-fA-F]{64}$/,
+        "Invalid private key format: must be a 64-character hex string (32 bytes)"
+      )
+      .optional(),
     POLYMARKET_BASE_URL: z.url().default("https://clob.polymarket.com"),
+    POLYMARKET_GAMMA_API_URL: z
+      .url()
+      .default("https://gamma-api.polymarket.com"),
     POLYMARKET_RPC_URL: z.url().default("https://polygon-rpc.com"),
     POLYMARKET_CHAIN_ID: z.coerce.number().int().default(137),
     GOOGLE_GENERATIVE_AI_API_KEY: z.string().min(1).optional(),

@@ -5,15 +5,17 @@ import type { AgentMemoryStore } from "./memory-store";
 export class InMemoryAgentMemoryStore implements AgentMemoryStore {
   private readonly store = new Map<string, UIMessage[]>();
 
-  async load(threadId: string): Promise<UIMessage[]> {
-    return this.store.get(threadId) ?? [];
+  load(threadId: string): Promise<UIMessage[]> {
+    return Promise.resolve(this.store.get(threadId) ?? []);
   }
 
-  async save(threadId: string, messages: UIMessage[]): Promise<void> {
+  save(threadId: string, messages: UIMessage[]): Promise<void> {
     this.store.set(threadId, messages);
+    return Promise.resolve();
   }
 
-  async clear(threadId: string): Promise<void> {
+  clear(threadId: string): Promise<void> {
     this.store.delete(threadId);
+    return Promise.resolve();
   }
 }

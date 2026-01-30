@@ -22,10 +22,58 @@ export interface MarketDataSource {
     size: number;
     price: number;
   }): Promise<ExecutionResult>;
+  // New methods for swarm agents
+  getTechnicalIndicators?(marketId: string): Promise<Record<string, number>>;
+  getNews?(query: string): Promise<Array<{ title: string; content: string; score: number }>>;
+  getMacroData?(indicator: string): Promise<Record<string, unknown>>;
+  getVolatilityMetrics?(marketId: string): Promise<{ vix?: number; impliedVolatility?: number }>;
+  getCorrelations?(marketId: string, baseAsset: string): Promise<Record<string, number>>;
+  // Even more methods for advanced swarm
+  backtest?(strategy: AgentStrategy, params: Record<string, any>): Promise<{ sharpe: number; winRate: number; drawdown: number }>;
+  optimize?(positions: any[]): Promise<any>;
+  scanArbitrage?(): Promise<any[]>;
+  getEvents?(): Promise<any[]>;
+  predict?(marketId: string): Promise<{ probability: number; confidence: number }>;
 }
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
+}
+
+function getRiskFactor(riskLevel: "low" | "medium" | "high"): number {
+  if (riskLevel === "high") {
+    return 1.4;
+  }
+  if (riskLevel === "medium") {
+    return 1.0;
+  }
+  return 0.7;
+}
+
+function calculateConfidence(strategy: AgentStrategy, spread: number): number {
+  if (strategy === "momentum") {
+    return 0.55 + clamp(spread, 0, 0.3);
+  }
+  if (strategy === "contrarian") {
+    return 0.45 + clamp(1 - spread, 0, 0.3);
+  }
+  if (strategy === "risk_parity") {
+    return 0.5;
+  }
+  if (strategy === "news") {
+    return 0.52;
+  }
+  return 0.48;
+}
+
+function getRecommendation(confidence: number): "buy" | "sell" | "hold" {
+  if (confidence > 0.65) {
+    return "buy";
+  }
+  if (confidence < 0.4) {
+    return "sell";
+  }
+  return "hold";
 }
 
 function estimateVar95({
@@ -38,14 +86,21 @@ function estimateVar95({
   riskLevel: "low" | "medium" | "high";
 }): number {
   const liquidityPenalty = clamp(size / Math.max(liquidity, 1), 0, 1);
-  const riskFactor =
-    riskLevel === "high" ? 1.4 : riskLevel === "medium" ? 1.0 : 0.7;
+  const riskFactor = getRiskFactor(riskLevel);
   return clamp(size * (0.08 + liquidityPenalty) * riskFactor, 0, size);
 }
 
 export function createTradingTools(options: {
   dataSource: MarketDataSource;
   now?: () => Date;
+  beforeExecuteTrade?: (params: {
+    marketId: string;
+    outcomeId: string;
+    side: TradeSide;
+    size: number;
+    maxSlippage: number;
+  }) => void | Promise<void>;
+  afterExecuteTrade?: (result: ExecutionResult) => void | Promise<void>;
 }) {
   const now = options.now ?? (() => new Date());
 
@@ -94,19 +149,8 @@ export function createTradingTools(options: {
         throw new AgentToolError("Market outcomes missing", "analyzeMarket");
       }
       const spread = Math.abs(yes.price - no.price);
-      const baseConfidence =
-        strategy === "momentum"
-          ? 0.55 + clamp(spread, 0, 0.3)
-          : strategy === "contrarian"
-            ? 0.45 + clamp(1 - spread, 0, 0.3)
-            : strategy === "risk_parity"
-              ? 0.5
-              : strategy === "news"
-                ? 0.52
-                : 0.48;
-
-      const recommendation =
-        yes.price > 0.6 ? "buy" : yes.price < 0.35 ? "sell" : "hold";
+      const baseConfidence = calculateConfidence(strategy, spread);
+      const recommendation = getRecommendation(baseConfidence);
       const confidence = clamp(baseConfidence, 0.05, 0.95);
 
       const proposedTrade: ProposedTrade | undefined =
@@ -222,15 +266,23 @@ export function createTradingTools(options: {
       side,
       size,
       maxSlippage,
-      reasoning,
     }: {
       marketId: string;
       outcomeId: string;
       side: TradeSide;
       size: number;
       maxSlippage: number;
-      reasoning?: string;
     }): Promise<ExecutionResult> => {
+      if (options.beforeExecuteTrade) {
+        await options.beforeExecuteTrade({
+          marketId,
+          outcomeId,
+          side,
+          size,
+          maxSlippage,
+        });
+      }
+
       const snapshot = await options.dataSource.getMarketSnapshot(marketId);
       if (!snapshot) {
         throw new AgentToolError("Market not found", "executeTrade");
@@ -238,7 +290,14 @@ export function createTradingTools(options: {
 
       const outcome = snapshot.outcomes.find((o) => o.id === outcomeId);
       if (!outcome) {
-        return { status: "rejected", reason: "Outcome not found" };
+        const res: ExecutionResult = {
+          status: "rejected",
+          reason: "Outcome not found",
+        };
+        if (options.afterExecuteTrade) {
+          await options.afterExecuteTrade(res);
+        }
+        return res;
       }
 
       const slippage = clamp(
@@ -251,13 +310,19 @@ export function createTradingTools(options: {
           ? outcome.price * (1 + slippage)
           : outcome.price * (1 - slippage);
 
-      return options.dataSource.executeTrade({
+      const result = await options.dataSource.executeTrade({
         marketId,
         outcomeId,
         side,
         size,
         price: limitPrice,
       });
+
+      if (options.afterExecuteTrade) {
+        await options.afterExecuteTrade(result);
+      }
+
+      return result;
     },
   });
 
@@ -278,11 +343,159 @@ export function createTradingTools(options: {
     },
   });
 
+  const getTechnicalIndicators = tool({
+    description: "Get technical indicators like RSI, MACD, and Bollinger Bands.",
+    inputSchema: z.object({
+      marketId: z.string().min(1),
+    }),
+    strict: true,
+    execute: async ({ marketId }) => {
+      if (!options.dataSource.getTechnicalIndicators) {
+        return { error: "Technical indicators not supported by data source" };
+      }
+      return await options.dataSource.getTechnicalIndicators(marketId);
+    },
+  });
+
+  const getNews = tool({
+    description: "Get real-time news related to a market or asset.",
+    inputSchema: z.object({
+      query: z.string().min(1),
+    }),
+    strict: true,
+    execute: async ({ query }) => {
+      if (!options.dataSource.getNews) {
+        return { error: "News not supported by data source" };
+      }
+      return await options.dataSource.getNews(query);
+    },
+  });
+
+  const getMacroData = tool({
+    description: "Assess Fed policy, inflation, and macro data.",
+    inputSchema: z.object({
+      indicator: z.string().min(1),
+    }),
+    strict: true,
+    execute: async ({ indicator }) => {
+      if (!options.dataSource.getMacroData) {
+        return { error: "Macro data not supported by data source" };
+      }
+      return await options.dataSource.getMacroData(indicator);
+    },
+  });
+
+  const getVolatilityMetrics = tool({
+    description: "Analyze VIX and implied volatility.",
+    inputSchema: z.object({
+      marketId: z.string().min(1),
+    }),
+    strict: true,
+    execute: async ({ marketId }) => {
+      if (!options.dataSource.getVolatilityMetrics) {
+        return { error: "Volatility metrics not supported by data source" };
+      }
+      return await options.dataSource.getVolatilityMetrics(marketId);
+    },
+  });
+
+  const getCorrelations = tool({
+    description: "Identify cross-asset relationships.",
+    inputSchema: z.object({
+      marketId: z.string().min(1),
+      baseAsset: z.string().min(1),
+    }),
+    strict: true,
+    execute: async ({ marketId, baseAsset }) => {
+      if (!options.dataSource.getCorrelations) {
+        return { error: "Correlations not supported by data source" };
+      }
+      return await options.dataSource.getCorrelations(marketId, baseAsset);
+    },
+  });
+
+  const backtestStrategy = tool({
+    description: "Validate a trading strategy against historical data.",
+    inputSchema: z.object({
+      strategy: z.string().min(1),
+      parameters: z.record(z.string(), z.unknown()).describe("Strategy-specific parameters."),
+    }),
+    strict: true,
+    execute: async ({ strategy, parameters }) => {
+      if (!options.dataSource.backtest) {
+        return { error: "Backtesting not supported by data source" };
+      }
+      return await options.dataSource.backtest(strategy as any, parameters as any);
+    },
+  });
+
+  const optimizePortfolio = tool({
+    description: "Optimize asset allocation to maintain target risk-reward profiles.",
+    inputSchema: z.object({
+      positions: z.array(z.record(z.string(), z.unknown())).describe("Current portfolio positions."),
+    }),
+    strict: true,
+    execute: async ({ positions }) => {
+      if (!options.dataSource.optimize) {
+        return { error: "Portfolio optimization not supported by data source" };
+      }
+      return await options.dataSource.optimize(positions);
+    },
+  });
+
+  const scanArbitrage = tool({
+    description: "Find and exploit pricing discrepancies across different markets.",
+    inputSchema: z.object({}),
+    strict: true,
+    execute: async () => {
+      if (!options.dataSource.scanArbitrage) {
+        return { error: "Arbitrage scanning not supported by data source" };
+      }
+      return await options.dataSource.scanArbitrage();
+    },
+  });
+
+  const monitorEvents = tool({
+    description: "Track upcoming market-moving events like earnings or FOMC.",
+    inputSchema: z.object({}),
+    strict: true,
+    execute: async () => {
+      if (!options.dataSource.getEvents) {
+        return { error: "Event monitoring not supported by data source" };
+      }
+      return await options.dataSource.getEvents();
+    },
+  });
+
+  const predictOutcome = tool({
+    description: "Model event probabilities for prediction markets.",
+    inputSchema: z.object({
+      marketId: z.string().min(1),
+    }),
+    strict: true,
+    execute: async ({ marketId }) => {
+      if (!options.dataSource.predict) {
+        return { error: "Prediction modeling not supported by data source" };
+      }
+      return await options.dataSource.predict(marketId);
+    },
+  });
+
   return {
     analyzeMarket,
     calculateRisk,
     executeTrade,
     listMarkets,
+    getTechnicalIndicators,
+    getNews,
+    getMacroData,
+    getVolatilityMetrics,
+    getCorrelations,
+    backtestStrategy,
+    optimizePortfolio,
+    scanArbitrage,
+    monitorEvents,
+    predictOutcome,
   };
 }
 

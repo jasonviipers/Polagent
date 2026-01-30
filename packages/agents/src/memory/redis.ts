@@ -17,7 +17,9 @@ export class RedisAgentMemoryStore implements AgentMemoryStore {
     const key = this.keyPrefix + threadId;
     try {
       const value = await this.redis.get(key);
-      if (!value) return [];
+      if (!value) {
+        return [];
+      }
       const parsed = JSON.parse(value) as UIMessage[];
       return Array.isArray(parsed) ? parsed : [];
     } catch (err) {

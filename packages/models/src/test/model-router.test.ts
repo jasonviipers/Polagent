@@ -1,7 +1,7 @@
+import { expect, test } from "bun:test";
 import { InMemoryModelMetricsStore } from "../metrics";
 import { createModelRouter } from "../router";
 import type { ModelProfile } from "../types";
-import { expect, test } from "bun:test";
 
 const baseProfile = (id: string): ModelProfile => ({
   id,

@@ -1,3 +1,4 @@
+// biome-ignore lint/performance/noBarrelFile: Package entry point
 export * from "./agents/trading-agent";
 export * from "./conversation";
 export * from "./errors";

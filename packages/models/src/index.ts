@@ -1,3 +1,4 @@
+// biome-ignore lint/performance/noBarrelFile: Package entry point
 export * from "./metrics";
 
 export * from "./profiles";

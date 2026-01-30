@@ -55,11 +55,17 @@ export default function AIPage() {
     })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
-        if (!Array.isArray(data)) return;
+        if (!Array.isArray(data)) {
+          return;
+        }
         const parsed = data.flatMap((p) => {
-          if (!(typeof p === "object" && p && "id" in p)) return [];
+          if (!(typeof p === "object" && p && "id" in p)) {
+            return [];
+          }
           const id = String((p as { id: unknown }).id);
-          if (!id) return [];
+          if (!id) {
+            return [];
+          }
           const enabledByDefault =
             "enabledByDefault" in p
               ? Boolean((p as { enabledByDefault: unknown }).enabledByDefault)
@@ -68,7 +74,9 @@ export default function AIPage() {
         });
         setAvailableModels(parsed);
       })
-      .catch(() => {});
+      .catch(() => {
+        // Ignore errors
+      });
     return () => controller.abort();
   }, []);
 

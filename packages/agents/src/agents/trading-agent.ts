@@ -88,9 +88,7 @@ export class TradingAgent {
     });
 
     const validated = await validateUIMessages({
-      // biome-ignore lint/suspicious/noExplicitAny: Vercel AI SDK typing mismatch
       messages: merged as any,
-      // biome-ignore lint/suspicious/noExplicitAny: Vercel AI SDK typing mismatch
       tools: this.tools as any,
     });
 
@@ -105,16 +103,13 @@ export class TradingAgent {
         `Trades today: ${this.state.tradesToday}/${this.config.maxTradesPerDay}`,
         `Max drawdown limit: ${this.config.maxDrawdown}`,
       ].join("\n"),
-      // biome-ignore lint/suspicious/noExplicitAny: Vercel AI SDK typing mismatch
       tools: this.tools as any,
       stopWhen: stepCountIs(10),
-      // biome-ignore lint/suspicious/noExplicitAny: Vercel AI SDK typing mismatch
       messages: await convertToModelMessages(validated as any),
       onFinish: async (event) => {
         const latencyMs = Date.now() - startedAt;
         if (options.onModelFinish) {
           await options.onModelFinish({
-            // biome-ignore lint/suspicious/noExplicitAny: Accessing internal property
             modelId: (model as any).modelId ?? "unknown",
             taskType: options.taskType ?? "unknown",
             totalUsage: event.totalUsage,

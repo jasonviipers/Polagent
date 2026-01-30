@@ -318,7 +318,7 @@ function calculateRSI(data: number[], period = 14): (number | undefined)[] {
 // Generate mock data
 function generateCandleData(
   timeframe: Timeframe,
-  count = 100,
+  count,
   indicators: IndicatorConfig[],
   initialPrice = 0.5
 ): CandleData[] {
@@ -453,7 +453,9 @@ function CandlestickBar(props: {
     dataMax = 1,
     settings,
   } = props;
-  if (!payload) return null;
+  if (!payload) {
+    return null;
+  }
 
   const { open, close, high, low, isUp } = payload;
   const upColor = settings?.upColor || "#22c55e";
@@ -861,10 +863,14 @@ function AddIndicatorDialog({
   const [stdDev, setStdDev] = useState(2);
 
   const handleAdd = () => {
-    if (!selectedType) return;
+    if (!selectedType) {
+      return;
+    }
 
     const indicator = AVAILABLE_INDICATORS.find((i) => i.id === selectedType);
-    if (!indicator) return;
+    if (!indicator) {
+      return;
+    }
 
     const newIndicator: IndicatorConfig = {
       id: `${selectedType}${period || ""}`,
@@ -1002,13 +1008,17 @@ export function TradingChart({
 
   // Real-time updates
   useEffect(() => {
-    if (!isLive) return;
+    if (!isLive) {
+      return;
+    }
 
     const interval = setInterval(() => {
       setData((prev) => {
-        if (prev.length === 0) return prev;
+        if (prev.length === 0) {
+          return prev;
+        }
 
-        const lastCandle = prev[prev.length - 1];
+        const lastCandle = prev.at(-1);
         const volatility = 0.002;
         const newClose = lastCandle.close + (Math.random() - 0.5) * volatility;
         const newHigh = Math.max(lastCandle.high, newClose);
@@ -1105,15 +1115,19 @@ export function TradingChart({
         const bollingerHighs = data
           .map((d) => d.bollingerUpper)
           .filter((v): v is number => v !== undefined);
-        if (bollingerLows.length > 0) min = Math.min(min, ...bollingerLows);
-        if (bollingerHighs.length > 0) max = Math.max(max, ...bollingerHighs);
+        if (bollingerLows.length > 0) {
+          min = Math.min(min, ...bollingerLows);
+        }
+        if (bollingerHighs.length > 0) {
+          max = Math.max(max, ...bollingerHighs);
+        }
       }
 
       const padding = (max - min) * 0.1;
       min -= padding;
       max += padding;
 
-      const current = data[data.length - 1];
+      const current = data.at(-1);
       const first = data[0];
       const change = ((current.close - first.open) / first.open) * 100;
 
@@ -1596,9 +1610,13 @@ export function TradingChart({
 
             <ChartTooltip
               content={({ active, payload, label }) => {
-                if (!(active && payload?.length)) return null;
+                if (!(active && payload?.length)) {
+                  return null;
+                }
                 const candle = payload[0]?.payload as CandleData | undefined;
-                if (!candle) return null;
+                if (!candle) {
+                  return null;
+                }
                 return (
                   <div className="rounded-lg border border-border bg-card p-3 shadow-xl">
                     <div className="mb-2 text-muted-foreground text-xs">
@@ -1758,25 +1776,25 @@ export function TradingChart({
           <div className="hidden sm:block">
             <span className="text-muted-foreground">O</span>
             <span className="ml-1 font-mono text-foreground">
-              {data[data.length - 1]?.open.toFixed(4) ?? "-"}
+              {data.at(-1)?.open.toFixed(4) ?? "-"}
             </span>
           </div>
           <div className="hidden sm:block">
             <span className="text-muted-foreground">H</span>
             <span className="ml-1 font-mono text-success">
-              {data[data.length - 1]?.high.toFixed(4) ?? "-"}
+              {data.at(-1)?.high.toFixed(4) ?? "-"}
             </span>
           </div>
           <div className="hidden sm:block">
             <span className="text-muted-foreground">L</span>
             <span className="ml-1 font-mono text-destructive">
-              {data[data.length - 1]?.low.toFixed(4) ?? "-"}
+              {data.at(-1)?.low.toFixed(4) ?? "-"}
             </span>
           </div>
           <div className="hidden sm:block">
             <span className="text-muted-foreground">C</span>
             <span className="ml-1 font-mono text-foreground">
-              {data[data.length - 1]?.close.toFixed(4) ?? "-"}
+              {data.at(-1)?.close.toFixed(4) ?? "-"}
             </span>
           </div>
         </div>

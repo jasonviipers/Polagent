@@ -106,7 +106,7 @@ export function DynamicBreadcrumb() {
                       {crumb.label}
                     </Link>
                   )}
-                ></BreadcrumbLink>
+                />
               )}
             </BreadcrumbItem>
           </div>

@@ -1,5 +1,4 @@
 import { db } from "@polagent/db";
-// biome-ignore lint/performance/noNamespaceImport: Schema usage
 import * as schema from "@polagent/db/schema/auth";
 import { env } from "@polagent/env/server";
 import { betterAuth } from "better-auth";

@@ -193,7 +193,6 @@ export default function AIPage() {
                       isAnimating={
                         status === "streaming" && message.role === "assistant"
                       }
-                      // biome-ignore lint/suspicious/noArrayIndexKey: Parts lack unique IDs
                       key={index}
                     >
                       {part.text}
@@ -207,7 +206,6 @@ export default function AIPage() {
                   return (
                     <pre
                       className="mt-2 overflow-auto rounded-md bg-muted p-2 text-xs"
-                      // biome-ignore lint/suspicious/noArrayIndexKey: Parts lack unique IDs
                       key={index}
                     >
                       {JSON.stringify(part, null, 2)}

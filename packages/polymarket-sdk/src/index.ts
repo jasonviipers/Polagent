@@ -1,4 +1,3 @@
-// biome-ignore lint/performance/noBarrelFile: Library entry point
 export { PolymarketClient } from "./client.js";
 export type {
   CancelOrderRequest,

@@ -12,7 +12,6 @@ function convertToMarketSnapshot(market: PolymarketMarket): MarketSnapshot {
     category: market.category,
     liquidity: market.liquidity,
     volume24h: market.volume, // Using volume as volume24h (Polymarket API provides total volume)
-    // biome-ignore lint/suspicious/noExplicitAny: SDK outcome type not fully typed
     outcomes: market.outcomes.map((outcome: any) => ({
       id: outcome.id,
       label: outcome.name,

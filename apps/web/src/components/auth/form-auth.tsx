@@ -97,7 +97,9 @@ export function FormAuth({
   };
 
   const renderLastUsedBadge = (method: lastMethodType) => {
-    if (lastMethod !== method) return null;
+    if (lastMethod !== method) {
+      return null;
+    }
 
     return (
       <span className="absolute top-1/2 right-3 -translate-y-1/2 rounded-full bg-primary/10 px-2 py-0.5 font-medium text-primary text-xs">

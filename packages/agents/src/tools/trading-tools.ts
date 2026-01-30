@@ -24,16 +24,28 @@ export interface MarketDataSource {
   }): Promise<ExecutionResult>;
   // New methods for swarm agents
   getTechnicalIndicators?(marketId: string): Promise<Record<string, number>>;
-  getNews?(query: string): Promise<Array<{ title: string; content: string; score: number }>>;
+  getNews?(
+    query: string
+  ): Promise<Array<{ title: string; content: string; score: number }>>;
   getMacroData?(indicator: string): Promise<Record<string, unknown>>;
-  getVolatilityMetrics?(marketId: string): Promise<{ vix?: number; impliedVolatility?: number }>;
-  getCorrelations?(marketId: string, baseAsset: string): Promise<Record<string, number>>;
+  getVolatilityMetrics?(
+    marketId: string
+  ): Promise<{ vix?: number; impliedVolatility?: number }>;
+  getCorrelations?(
+    marketId: string,
+    baseAsset: string
+  ): Promise<Record<string, number>>;
   // Even more methods for advanced swarm
-  backtest?(strategy: AgentStrategy, params: Record<string, any>): Promise<{ sharpe: number; winRate: number; drawdown: number }>;
+  backtest?(
+    strategy: AgentStrategy,
+    params: Record<string, any>
+  ): Promise<{ sharpe: number; winRate: number; drawdown: number }>;
   optimize?(positions: any[]): Promise<any>;
   scanArbitrage?(): Promise<any[]>;
   getEvents?(): Promise<any[]>;
-  predict?(marketId: string): Promise<{ probability: number; confidence: number }>;
+  predict?(
+    marketId: string
+  ): Promise<{ probability: number; confidence: number }>;
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -344,7 +356,8 @@ export function createTradingTools(options: {
   });
 
   const getTechnicalIndicators = tool({
-    description: "Get technical indicators like RSI, MACD, and Bollinger Bands.",
+    description:
+      "Get technical indicators like RSI, MACD, and Bollinger Bands.",
     inputSchema: z.object({
       marketId: z.string().min(1),
     }),
@@ -418,21 +431,29 @@ export function createTradingTools(options: {
     description: "Validate a trading strategy against historical data.",
     inputSchema: z.object({
       strategy: z.string().min(1),
-      parameters: z.record(z.string(), z.unknown()).describe("Strategy-specific parameters."),
+      parameters: z
+        .record(z.string(), z.unknown())
+        .describe("Strategy-specific parameters."),
     }),
     strict: true,
     execute: async ({ strategy, parameters }) => {
       if (!options.dataSource.backtest) {
         return { error: "Backtesting not supported by data source" };
       }
-      return await options.dataSource.backtest(strategy as any, parameters as any);
+      return await options.dataSource.backtest(
+        strategy as any,
+        parameters as any
+      );
     },
   });
 
   const optimizePortfolio = tool({
-    description: "Optimize asset allocation to maintain target risk-reward profiles.",
+    description:
+      "Optimize asset allocation to maintain target risk-reward profiles.",
     inputSchema: z.object({
-      positions: z.array(z.record(z.string(), z.unknown())).describe("Current portfolio positions."),
+      positions: z
+        .array(z.record(z.string(), z.unknown()))
+        .describe("Current portfolio positions."),
     }),
     strict: true,
     execute: async ({ positions }) => {
@@ -444,7 +465,8 @@ export function createTradingTools(options: {
   });
 
   const scanArbitrage = tool({
-    description: "Find and exploit pricing discrepancies across different markets.",
+    description:
+      "Find and exploit pricing discrepancies across different markets.",
     inputSchema: z.object({}),
     strict: true,
     execute: async () => {

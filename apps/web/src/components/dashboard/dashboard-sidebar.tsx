@@ -71,7 +71,7 @@ export function DashboardSidebar({
 
   return (
     <Sidebar collapsible="icon" variant="inset" {...props}>
-      <SidebarHeader className="h-13 border-sidebar-border border-b"></SidebarHeader>
+      <SidebarHeader className="h-13 border-sidebar-border border-b" />
       <SidebarContent className="pt-4">
         <TooltipProvider>
           {data.navMain.map((item) => (

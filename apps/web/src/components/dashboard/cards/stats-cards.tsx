@@ -50,9 +50,9 @@ function StatCard({
   );
 }
 
-function formatVolume(volume: number | string | undefined | null): string {
+function _formatVolume(volume: number | string | undefined | null): string {
   const num = typeof volume === "string" ? Number.parseFloat(volume) : volume;
-  if (num == null || isNaN(num)) {
+  if (num == null || Number.isNaN(num)) {
     return "$0";
   }
   if (num >= 1_000_000_000) {
@@ -68,7 +68,7 @@ function formatVolume(volume: number | string | undefined | null): string {
 }
 
 export function StatsCards() {
-  const stats = useMemo(() => {}, []);
+  const _stats = useMemo(() => {}, []);
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

@@ -1,4 +1,4 @@
-import { tool, type LanguageModel, type UIMessage } from "ai";
+import { type LanguageModel, tool, type UIMessage } from "ai";
 import { z } from "zod";
 import { TradingAgent } from "./agents/trading-agent";
 import { AgentConfigError } from "./errors";
@@ -48,7 +48,9 @@ export class AgentOrchestrator {
   getAgent(agentId: string): TradingAgent {
     // Check if agent is already active
     let agent = this.activeAgents.get(agentId);
-    if (agent) return agent;
+    if (agent) {
+      return agent;
+    }
 
     // Check if we have a config for this agentId
     const config = this.agentConfigs.get(agentId);
@@ -75,21 +77,35 @@ export class AgentOrchestrator {
 
   private injectOrchestratorTools(agent: TradingAgent) {
     const delegateTasks = tool({
-      description: "Delegate multiple subtasks to specialized agents in parallel.",
+      description:
+        "Delegate multiple subtasks to specialized agents in parallel.",
       inputSchema: z.object({
-        tasks: z.array(z.object({
-          id: z.string().describe("Unique identifier for this task."),
-          agentId: z.string().describe("The ID of the specialized agent to use."),
-          taskDescription: z.string().describe("What the agent should analyze or do."),
-          dependsOn: z.array(z.string()).optional().describe("IDs of tasks that must complete before this one starts."),
-        })).max(100),
+        tasks: z
+          .array(
+            z.object({
+              id: z.string().describe("Unique identifier for this task."),
+              agentId: z
+                .string()
+                .describe("The ID of the specialized agent to use."),
+              taskDescription: z
+                .string()
+                .describe("What the agent should analyze or do."),
+              dependsOn: z
+                .array(z.string())
+                .optional()
+                .describe(
+                  "IDs of tasks that must complete before this one starts."
+                ),
+            })
+          )
+          .max(100),
       }),
       strict: true,
       execute: async ({ tasks }) => {
         const startTime = Date.now();
         const orchestrationOverhead = 1;
         const DECISION_DEADLINE_MS = 30_000;
-        
+
         try {
           const results = new Map<string, any>();
           const executionResults: any[] = [];
@@ -99,52 +115,69 @@ export class AgentOrchestrator {
           // Wrap the entire scheduling loop in a deadline
           await Promise.race([
             (async () => {
-              const taskMap = new Map(tasks.map(t => [t.id, t]));
-              let remainingTasks = new Set(tasks.map(t => t.id));
+              const taskMap = new Map(tasks.map((t) => [t.id, t]));
+              const remainingTasks = new Set(tasks.map((t) => t.id));
 
               while (remainingTasks.size > 0) {
-                const currentStageTasks = Array.from(remainingTasks).filter(taskId => {
-                  const task = taskMap.get(taskId)!;
-                  return !task.dependsOn || task.dependsOn.every(depId => results.has(depId));
-                });
+                const currentStageTasks = Array.from(remainingTasks).filter(
+                  (taskId) => {
+                    const task = taskMap.get(taskId)!;
+                    return (
+                      !task.dependsOn ||
+                      task.dependsOn.every((depId) => results.has(depId))
+                    );
+                  }
+                );
 
                 if (currentStageTasks.length === 0) {
                   throw new Error("Circular dependency detected in tasks");
                 }
 
-                const stageResults = await Promise.all(currentStageTasks.map(async (taskId) => {
-                  const task = taskMap.get(taskId)!;
-                  const subAgent = this.getAgent(task.agentId);
-                  const subStartTime = Date.now();
-                  
-                  let enrichedDescription = task.taskDescription;
-                  if (task.dependsOn && task.dependsOn.length > 0) {
-                    const depContext = task.dependsOn.map(id => `Result of ${id}: ${JSON.stringify(results.get(id))}`).join("\n");
-                    enrichedDescription = `${task.taskDescription}\n\nContext from previous tasks:\n${depContext}`;
-                  }
+                const stageResults = await Promise.all(
+                  currentStageTasks.map(async (taskId) => {
+                    const task = taskMap.get(taskId)!;
+                    const subAgent = this.getAgent(task.agentId);
+                    const subStartTime = Date.now();
 
-                  const response = await subAgent.respond({
-                    threadId: `swarm_${startTime}`,
-                    incomingMessages: [{ 
-                      role: "user", 
-                      id: `task_${Date.now()}`,
-                      parts: [{ type: "text", text: enrichedDescription }]
-                    }],
-                    taskType: subAgent.config.strategy,
-                  });
-                  
-                  const subDuration = Date.now() - subStartTime;
-                  const steps = typeof (response as any).steps === "function" ? (response as any).steps() : 1;
+                    let enrichedDescription = task.taskDescription;
+                    if (task.dependsOn && task.dependsOn.length > 0) {
+                      const depContext = task.dependsOn
+                        .map(
+                          (id) =>
+                            `Result of ${id}: ${JSON.stringify(results.get(id))}`
+                        )
+                        .join("\n");
+                      enrichedDescription = `${task.taskDescription}\n\nContext from previous tasks:\n${depContext}`;
+                    }
 
-                  return {
-                    id: task.id,
-                    agentId: task.agentId,
-                    strategy: subAgent.config.strategy,
-                    result: response.result,
-                    latencyMs: subDuration,
-                    steps, 
-                  };
-                }));
+                    const response = await subAgent.respond({
+                      threadId: `swarm_${startTime}`,
+                      incomingMessages: [
+                        {
+                          role: "user",
+                          id: `task_${Date.now()}`,
+                          parts: [{ type: "text", text: enrichedDescription }],
+                        },
+                      ],
+                      taskType: subAgent.config.strategy,
+                    });
+
+                    const subDuration = Date.now() - subStartTime;
+                    const steps =
+                      typeof (response as any).steps === "function"
+                        ? (response as any).steps()
+                        : 1;
+
+                    return {
+                      id: task.id,
+                      agentId: task.agentId,
+                      strategy: subAgent.config.strategy,
+                      result: response.result,
+                      latencyMs: subDuration,
+                      steps,
+                    };
+                  })
+                );
 
                 for (const res of stageResults) {
                   results.set(res.id, res.result);
@@ -153,16 +186,32 @@ export class AgentOrchestrator {
                   totalLatencyMs += res.latencyMs;
                 }
 
-                totalCriticalSteps += Math.max(...stageResults.map(r => r.steps), 0);
+                totalCriticalSteps += Math.max(
+                  ...stageResults.map((r) => r.steps),
+                  0
+                );
               }
             })(),
-            new Promise<void>((_, reject) => 
-              setTimeout(() => reject(new Error(`Decision deadline of ${DECISION_DEADLINE_MS}ms exceeded`)), DECISION_DEADLINE_MS)
-            )
+            new Promise<void>((_, reject) =>
+              setTimeout(
+                () =>
+                  reject(
+                    new Error(
+                      `Decision deadline of ${DECISION_DEADLINE_MS}ms exceeded`
+                    )
+                  ),
+                DECISION_DEADLINE_MS
+              )
+            ),
           ]);
 
           const wallClockTimeMs = Date.now() - startTime;
-          const slowestTask = executionResults.length > 0 ? executionResults.reduce((prev, current) => (prev.latencyMs > current.latencyMs) ? prev : current) : null;
+          const slowestTask =
+            executionResults.length > 0
+              ? executionResults.reduce((prev, current) =>
+                  prev.latencyMs > current.latencyMs ? prev : current
+                )
+              : null;
 
           return {
             results: executionResults,
@@ -175,7 +224,7 @@ export class AgentOrchestrator {
               bottleneckAgent: slowestTask?.agentId,
               bottleneckDurationMs: slowestTask?.latencyMs,
               parallelismEfficiency: tasks.length / (wallClockTimeMs / 1000), // simplistic concurrent agents per second
-            }
+            },
           };
         } catch (error) {
           return {
@@ -184,7 +233,7 @@ export class AgentOrchestrator {
               totalSubagents: tasks.length,
               wallClockTimeMs: Date.now() - startTime,
               status: "failed",
-            }
+            },
           };
         }
       },
@@ -212,7 +261,6 @@ export class AgentOrchestrator {
       modelOverride: options.modelOverride,
       taskType: options.taskType,
       onModelFinish: options.onModelFinish,
-      // biome-ignore lint/suspicious/noExplicitAny: Dynamic return type
     })) as any;
   }
 }

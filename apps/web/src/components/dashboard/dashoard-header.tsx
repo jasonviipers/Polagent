@@ -27,7 +27,7 @@ export function DashboardHeader() {
     updateTime();
     const interval = setInterval(updateTime, 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [updateTime]);
 
   const handleRefresh = () => {
     setIsRefreshing(true);
